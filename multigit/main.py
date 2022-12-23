@@ -217,7 +217,9 @@ def status(
     filter: Optional[str] = typer.Option(
         None, "--filter", "-f", help="Filter projects"
     ),
-    short: bool = typer.Option(False, "--short", "-s", help="Show short status"),
+    extra_args: Optional[List[str]] = typer.Argument(
+        None, help="Extra arguments to pass to git"
+    ),
 ):
     """Show the git status of all repositories."""
     multigit = Multigit(config_path=config)
@@ -232,8 +234,8 @@ def status(
         if dirty or untracked_files:
             rich_print(": [bold yellow]dirty[/bold yellow]")
             command = ["git", "status"]
-            if short:
-                command.append("--short")
+            if extra_args:
+                command.extend(extra_args)
             subprocess.check_call(command, cwd=project.path)
         else:
             rich_print(": [bold green]clean[/bold green]")
@@ -247,7 +249,9 @@ def add(
     filter: Optional[str] = typer.Option(
         None, "--filter", "-f", help="Filter projects"
     ),
-    all: bool = typer.Option(False, "--all", "-a"),
+    extra_args: Optional[List[str]] = typer.Argument(
+        None, help="Extra arguments to pass to git"
+    ),
 ):
     """Add changes in repositories."""
     multigit = Multigit(config_path=config)
@@ -255,8 +259,8 @@ def add(
     projects = multigit.filtered_projects(filter)
     for project in projects:
         command = ["git", "add"]
-        if all:
-            command.append("--all")
+        if extra_args:
+            command.extend(extra_args)
         subprocess.check_call(command, cwd=project.path)
 
 
@@ -268,7 +272,9 @@ def commit(
     filter: Optional[str] = typer.Option(
         None, "--filter", "-f", help="Filter projects"
     ),
-    all: bool = typer.Option(False, "--all", "-a"),
+    extra_args: Optional[List[str]] = typer.Argument(
+        None, help="Extra arguments to pass to git"
+    ),
 ):
     """Commit changes in repositories."""
     multigit = Multigit(config_path=config)
@@ -277,8 +283,8 @@ def commit(
     for project in projects:
         print(project.repo.has_unstaged_changes())
         command = ["git", "commit"]
-        if all:
-            command.append("--all")
+        if extra_args:
+            command.extend(extra_args)
         subprocess.check_call(command, cwd=project.path)
 
 
@@ -290,6 +296,9 @@ def pull(
     filter: Optional[str] = typer.Option(
         None, "--filter", "-f", help="Filter projects"
     ),
+    extra_args: Optional[List[str]] = typer.Argument(
+        None, help="Extra arguments to pass to git"
+    ),
 ):
     """Pull changes in repositories."""
     multigit = Multigit(config_path=config)
@@ -299,7 +308,10 @@ def pull(
         repo = project.repo
         if repo.remotes:
             rich_print(f"[cyan]{project.path}[/cyan]")
-            subprocess.check_call(["git", "pull"], cwd=project.path)
+            command = ["git", "pull"]
+            if extra_args:
+                command.extend(extra_args)
+            subprocess.check_call(command, cwd=project.path)
 
 
 @app.command()
@@ -309,6 +321,9 @@ def push(
     ),
     filter: Optional[str] = typer.Option(
         None, "--filter", "-f", help="Filter projects"
+    ),
+    extra_args: Optional[List[str]] = typer.Argument(
+        None, help="Extra arguments to pass to git"
     ),
 ):
     """Push changes in repositories."""
@@ -322,7 +337,10 @@ def push(
         if repo.remotes:
             rich_print(f"[cyan]{project.path}[/cyan]")
             try:
-                subprocess.check_call(["git", "push"], cwd=project.path)
+                command = ["git", "push"]
+                if extra_args:
+                    command.extend(extra_args)
+                subprocess.check_call(command, cwd=project.path)
             except:
                 rich_print("[bold red]Push failed[/bold red]")
 
@@ -335,6 +353,9 @@ def gc(
     filter: Optional[str] = typer.Option(
         None, "--filter", "-f", help="Filter projects"
     ),
+    extra_args: Optional[List[str]] = typer.Argument(
+        None, help="Extra arguments to pass to git"
+    ),
 ):
     """Run git gc in repositories."""
     multigit = Multigit(config_path=config)
@@ -342,7 +363,10 @@ def gc(
     projects = multigit.filtered_projects(filter)
     for project in projects:
         rich_print(f"[cyan]{project.path}[/cyan]")
-        subprocess.check_call(["git", "gc"], cwd=project.path)
+        command = ["git", "gc"]
+        if extra_args:
+            command.extend(extra_args)
+        subprocess.check_call(command, cwd=project.path)
 
 
 # Utility commands
