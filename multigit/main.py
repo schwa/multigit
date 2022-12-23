@@ -134,13 +134,20 @@ app = typer.Typer(help="Manage multiple git repositories.")
 
 
 @app.command()
-def register(path: Path = typer.Argument(..., exists=True)):
+def register(paths: List[Path] = typer.Argument(...)):
     """Register a git repository."""
-    path = path.resolve()
-    if not (path / ".git").exists():
-        raise typer.BadParameter("Not a git repository")
-    multigit.config["repositories"][str(path)] = {"path": str(path)}
-    multigit.save()
+    for path in paths:
+        try:
+            path = path.resolve()
+            if not (path / ".git").exists():
+                raise typer.BadParameter("Not a git repository")
+            multigit.config["repositories"][str(path)] = {"path": str(path)}
+            multigit.save()
+            rich_print(f"Registered {path}")
+        except typer.BadParameter as e:
+            rich_print(f"[bold red]Error:[/bold red] {e} ({path})")
+        except:
+            raise
 
 
 @app.command()
@@ -180,7 +187,7 @@ def config(
 
 @app.command()
 def status(
-    short: bool = typer.Option(False, "--short", "-s"),
+    short: bool = typer.Option(False, "--short", "-s", help="Show short status"),
     limit: List[str] = typer.Option(None, "--limit", "-l"),
     dirty: Optional[bool] = typer.Option(None, "--dirty/--no-dirty"),
     stashes: Optional[bool] = typer.Option(None, "--stash/--no-stash"),
@@ -200,13 +207,15 @@ def status(
     for project in projects:
         dirty = project.repo.is_dirty()
         untracked_files = len(project.repo.untracked_files) > 0
-        if not (dirty and untracked_files) and skip_clean:
+        if not (dirty or untracked_files):
             continue
         rich_print(f"[cyan]{project.path}[/cyan]", end=None)
         if dirty or untracked_files:
             rich_print(": [bold yellow]dirty[/bold yellow]")
-            if not short:
-                subprocess.check_call(["git", "status"], cwd=project.path)
+            command = ["git", "status"]
+            if short:
+                command.append("--short")
+            subprocess.check_call(command, cwd=project.path)
         else:
             rich_print(": [bold green]clean[/bold green]")
 
