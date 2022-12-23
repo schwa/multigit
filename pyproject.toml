@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "multigit"
 version = "0.1.0"
-description = "TODO" # TODO
+description = "A tool for running git commands across multiple repositories."
 authors = ["Jonathan Wight <jwight@mac.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 typer = {extras = ["all"], version = "^0.7.0"}
 toml = "^0.10.2"
 gitpython = "^3.1.29"

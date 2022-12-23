@@ -1,39 +1,13 @@
-## mr
+# multigit
 
-https://myrepos.branchable.com
+multigit is a tool to manage multiple git repositories at once.
 
-   mr [options] checkout
+Loosely inspired by frustrations caused by trying to use [myrepos](https://myrepos.branchable.com/).
 
-    mr [options] update
+## Installation
 
-    mr [options] status
+The easiest way to install this is with pipx:
 
-    mr [options] clean [-f]
-
-    mr [options] commit [-m "message"]
-
-    mr [options] record [-m "message"]
-
-    mr [options] fetch
-
-    mr [options] push
-
-    mr [options] diff
-
-    mr [options] log
-
-    mr [options] grep pattern
-
-    mr [options] run command [param ...]
-
-    mr [options] bootstrap src [directory]
-
-    mr [options] register [repository]
-
-    mr [options] config section ["setting=[value]" ...]
-
-    mr [options] action [params ...]
-
-    mr [options] [online|offline]
-
-    mr [options] remember action [params ...]
+```sh
+pipx install git+https://github.com/schwa/multigit.git
+```
