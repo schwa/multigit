@@ -14,8 +14,9 @@ import typer  # https://typer.tiangolo.com
 # https://github.com/junegunn/fzf
 
 
-def quote(obj):
-    return shlex.quote(str(obj))
+def quote(path: Path):
+
+    return shlex.quote(str(path.resolve()))
 
 
 ### TODO: Config "repositories" should become "projects"
@@ -27,7 +28,9 @@ class Multigit:
         if config_path := config_path:
             self.config_path = config_path
         else:
-            config_home = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config"))
+            config_home = Path(
+                os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
+            )
             self.config_path = config_home / "multigit/config.toml"
         if not self.config_path.exists():
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -150,6 +153,11 @@ def unregister(path: Path = typer.Argument(..., exists=True)):
 
 
 @app.command()
+def config():
+    print(multigit.config_path)
+
+
+@app.command()
 def config_edit():
     """Edit the multigit config file."""
     multigit.edit(multigit.config_path)
@@ -216,6 +224,7 @@ def add(all: bool = typer.Option(False, "--all", "-a")):
 def commit(all: bool = typer.Option(False, "--all", "-a")):
     """Commit changes in repositories."""
     for project in multigit.all_projects:
+        print(project.repo.has_unstaged_changes())
         if project.repo.is_dirty() or project.repo.untracked_files:
             continue
         command = ["git", "commit"]
