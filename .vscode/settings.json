@@ -4,6 +4,7 @@
         "gitui",
         "multigit",
         "myrepos",
-        "pipx"
+        "pipx",
+        "unstaged"
     ]
 }
