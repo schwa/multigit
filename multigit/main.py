@@ -201,9 +201,23 @@ def status(
 
 
 @app.command()
-def commit(all: bool = typer.Option(False, "--all", "-a")):
-    """Commit changes in repositories.""" ""
+def add(all: bool = typer.Option(False, "--all", "-a")):
+    """Add changes in repositories."""
     for project in multigit.all_projects:
+        if project.repo.is_dirty() or project.repo.untracked_files:
+            continue
+        command = ["git", "add"]
+        if all:
+            command.append("--all")
+        subprocess.check_call(command, cwd=project.path)
+
+
+@app.command()
+def commit(all: bool = typer.Option(False, "--all", "-a")):
+    """Commit changes in repositories."""
+    for project in multigit.all_projects:
+        if project.repo.is_dirty() or project.repo.untracked_files:
+            continue
         command = ["git", "commit"]
         if all:
             command.append("--all")
