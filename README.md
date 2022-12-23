@@ -66,6 +66,29 @@ mmgit push
 
 ```
 
+## Configuration
+
+Configuration lives in `~/.config/multigit.toml` but can be specified with the `--config` flag or via the `XDG_CONFIG_HOME` environment variable.
+
+```toml
+# Set the default gitui tool to use
+gitui = "gitup"
+# Set the default editor tool to use.
+editor = "code"
+
+# Override behavior for specific commands
+[commands]
+[commands.status]
+# Add extra flags to the git status command
+args = ["--short"]
+# Only perform status on dirty repositories
+filter = "dirty"
+
+# Registered repositories
+[repositories."/Users/schwa/Shared/Projects/multigit"]
+path = "/Users/schwa/Shared/Projects/multigit"
+```
+
 ## Known Bugs
 
 - [ ]: Can't interrupt git push/pull with Ctrl-C

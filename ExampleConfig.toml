@@ -1,9 +1,0 @@
-gitui = "gitup"
-editor = "code"
-
-[commands]
-[commands.status]
-args = ["--short"]
-
-[repositories."/Users/schwa/Shared/Projects/multigit"]
-path = "/Users/schwa/Shared/Projects/multigit"
