@@ -66,6 +66,25 @@ mmgit push
 
 ```
 
+## Filtering
+
+By default, multigit will perform the command on all registered repositories. You can filter the repositories that are selected by using the `--filter` flag.
+
+The parameter passed to `--filter` is a comma-separated list of filters. The following filters are available:
+
+- `name:<name>`: Only select repositories that contain the given name (e.g `name:multigit`).
+- `not-name:<name>`: Only select repositories that do not contain the given name (e.g `not-name:multigit`).
+
+- `dirty`: Only select repositories that have uncommitted changes.
+- `no-dirty`: Only select repositories that have no uncommitted changes.
+- `untracked`: Only select repositories that have untracked files.
+- `no-untracked`: Only select repositories that have no untracked files.
+- `stashes`: Only select repositories that have stashed changes.
+- `no-stashes`: Only select repositories that have no stashed changes.
+- `remotes`: Only select repositories that have remotes.
+- `no-remotes`: Only select repositories that have no remotes.
+- `branch:<name>`: Only select repositories that contain branches with the given name (.e.g `branch:main`).
+
 ## Configuration
 
 Configuration lives in `~/.config/multigit.toml` but can be specified with the `--config` flag or via the `XDG_CONFIG_HOME` environment variable.

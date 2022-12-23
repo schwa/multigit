@@ -59,7 +59,9 @@ class Multigit:
         if not filter:
             return projects
 
-        atoms = [atom.split(":") for atom in filter.split(",")]
+        atoms = [
+            [atom.strip() for atom in atom.split(":")] for atom in filter.split(",")
+        ]
         for atom in atoms:
             match atom:
                 case ["name", _] | ["n", _]:
@@ -84,11 +86,9 @@ class Multigit:
                     projects = (p for p in projects if len(p.repo.remotes) == 0)
                 case ["branch", _] | ["b", _]:
                     projects = (
-                        p for p in projects if p.repo.active_branch.name == atom[1]
-                    )
-                case ["not-branch", _] | ["not-b", _]:
-                    projects = (
-                        p for p in projects if p.repo.active_branch.name != atom[1]
+                        p
+                        for p in projects
+                        if any(b for b in p.repo.branches if b.name == atom[1])
                     )
                 case _:
                     raise typer.BadParameter(f"Unknown filter: {atom}")
