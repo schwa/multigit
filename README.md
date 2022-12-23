@@ -35,7 +35,7 @@ mmgit push
 
 ## Help
 
-```
+```text
 
  Usage: mmgit [OPTIONS] COMMAND [ARGS]...
 
