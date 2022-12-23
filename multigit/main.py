@@ -95,7 +95,12 @@ class Multigit:
         return projects
 
     def edit(self, path):
-        editor = self.config.get("editor", os.environ.get("EDITOR", "nano"))
+        editor = self.config.get("editor", os.environ.get("EDITOR", None))
+        if not editor:
+            rich_print(
+                f"[bold red]Error:[/bold red]: No editor configured. Set 'editor' in {self.config_path} or 'EDITOR' environment variable."
+            )
+            raise typer.Exit(code=1)
         command = f"{editor} {quote(path)}"
         print(command)
         command = shlex.split(command)
@@ -104,12 +109,14 @@ class Multigit:
     def gitui(self, path):
         editor = self.config.get("gitui", os.environ.get("GITUI", None))
         if not editor:
-            raise typer.UsageError(
-                "No gitui configured. Set 'gitui' in config.toml or GITUI environment variable."
+            rich_print(
+                f"[bold red]Error:[/bold red]: No gitui configured. Set 'gitui' in {self.config_path} or 'GITUI' environment variable."
             )
+            raise typer.Exit(code=1)
         command = f"{editor} {quote(path)}"
         command = shlex.split(command)
-        subprocess.check_call(command)
+        rich_print(f"[bold green]Running:[/bold green] {command}")
+        subprocess.check_call(command, cwd=path)
 
 
 class Project:
@@ -126,6 +133,32 @@ class Project:
     @functools.cache
     def stashes(self):
         return len(self.repo.git.stash("list").splitlines())
+
+
+def magic(
+    command: str,
+    git_command: Optional[str] = None,
+    config: Optional[Path] = None,
+    filter: Optional[str] = None,
+    extra_args: Optional[List[str]] = None,
+):
+    """Convenience function to get the multigit instance, (optional) git command and filtered projects."""
+    multigit = Multigit(config_path=config)
+    if not extra_args:
+        extra_args = (
+            multigit.config.get("commands", {}).get(command, {}).get("args", [])
+        )
+    if not filter:
+        filter = (
+            multigit.config.get("commands", {}).get(command, {}).get("filter", None)
+        )
+
+    if git_command:
+        git_command = shlex.split(git_command) + extra_args
+
+    projects = multigit.filtered_projects(filter)
+
+    return (multigit, git_command, projects)
 
 
 ################################################################################################
@@ -222,9 +255,11 @@ def status(
     ),
 ):
     """Show the git status of all repositories."""
-    multigit = Multigit(config_path=config)
 
-    projects = multigit.filtered_projects(filter)
+    _, command, projects = magic(
+        "status", "git status", config=config, filter=filter, extra_args=extra_args
+    )
+
     for project in projects:
         dirty = project.repo.is_dirty()
         untracked_files = len(project.repo.untracked_files) > 0
@@ -233,9 +268,6 @@ def status(
         rich_print(f"[cyan]{project.path}[/cyan]", end=None)
         if dirty or untracked_files:
             rich_print(": [bold yellow]dirty[/bold yellow]")
-            command = ["git", "status"]
-            if extra_args:
-                command.extend(extra_args)
             subprocess.check_call(command, cwd=project.path)
         else:
             rich_print(": [bold green]clean[/bold green]")
@@ -254,13 +286,10 @@ def add(
     ),
 ):
     """Add changes in repositories."""
-    multigit = Multigit(config_path=config)
-
-    projects = multigit.filtered_projects(filter)
+    _, command, projects = magic(
+        "add", "git add", config=config, filter=filter, extra_args=extra_args
+    )
     for project in projects:
-        command = ["git", "add"]
-        if extra_args:
-            command.extend(extra_args)
         subprocess.check_call(command, cwd=project.path)
 
 
@@ -277,14 +306,11 @@ def commit(
     ),
 ):
     """Commit changes in repositories."""
-    multigit = Multigit(config_path=config)
-
-    projects = multigit.filtered_projects(filter)
+    _, command, projects = magic(
+        "commit", "git commit", config=config, filter=filter, extra_args=extra_args
+    )
     for project in projects:
         print(project.repo.has_unstaged_changes())
-        command = ["git", "commit"]
-        if extra_args:
-            command.extend(extra_args)
         subprocess.check_call(command, cwd=project.path)
 
 
@@ -301,16 +327,13 @@ def pull(
     ),
 ):
     """Pull changes in repositories."""
-    multigit = Multigit(config_path=config)
-
-    projects = multigit.filtered_projects(filter)
+    _, command, projects = magic(
+        "pull", "git pull", config=config, filter=filter, extra_args=extra_args
+    )
     for project in projects:
         repo = project.repo
         if repo.remotes:
             rich_print(f"[cyan]{project.path}[/cyan]")
-            command = ["git", "pull"]
-            if extra_args:
-                command.extend(extra_args)
             subprocess.check_call(command, cwd=project.path)
 
 
@@ -327,9 +350,9 @@ def push(
     ),
 ):
     """Push changes in repositories."""
-    multigit = Multigit(config_path=config)
-
-    projects = multigit.filtered_projects(filter)
+    _, command, projects = magic(
+        "push", "git push", config=config, filter=filter, extra_args=extra_args
+    )
     for project in projects:
         if project.no_push:
             continue
@@ -337,9 +360,6 @@ def push(
         if repo.remotes:
             rich_print(f"[cyan]{project.path}[/cyan]")
             try:
-                command = ["git", "push"]
-                if extra_args:
-                    command.extend(extra_args)
                 subprocess.check_call(command, cwd=project.path)
             except:
                 rich_print("[bold red]Push failed[/bold red]")
@@ -358,14 +378,11 @@ def gc(
     ),
 ):
     """Run git gc in repositories."""
-    multigit = Multigit(config_path=config)
-
-    projects = multigit.filtered_projects(filter)
+    _, command, projects = magic(
+        "gc", "git gc", config=config, filter=filter, extra_args=extra_args
+    )
     for project in projects:
         rich_print(f"[cyan]{project.path}[/cyan]")
-        command = ["git", "gc"]
-        if extra_args:
-            command.extend(extra_args)
         subprocess.check_call(command, cwd=project.path)
 
 
@@ -382,9 +399,14 @@ def ui(
     ),
 ):
     """Open the configured git ui program for selected repositories."""
-    multigit = Multigit(config_path=config)
+    multigit, _, projects = magic("ui", config=config, filter=filter)
+    if len(projects) > 1:
+        confirm = typer.confirm(
+            f"Are you sure you want to open {len(projects)} projects?"
+        )
+        if not confirm:
+            return
 
-    projects = multigit.filtered_projects(filter)
     for project in projects:
         repo = project.repo
         multigit.gitui(project.path)
@@ -400,11 +422,14 @@ def reveal(
     ),
 ):
     """Reveal selected repositories in the Finder."""
-    multigit = Multigit(config_path=config)
-
-    projects = multigit.filtered_projects(filter)
+    multigit, _, projects = magic("reveal", config=config, filter=filter)
+    if len(projects) > 1:
+        confirm = typer.confirm(
+            f"Are you sure you want to reveal {len(projects)} projects?"
+        )
+        if not confirm:
+            return
     for project in projects:
-        repo = project.repo
         subprocess.check_call(["open", "-R", project.path])
 
 
@@ -419,10 +444,9 @@ def shell_exec(
     ),
 ):
     """Execute a shell command in selected repositories."""
-    multigit = Multigit(config_path=config)
+    multigit, _, projects = magic("exec", config=config, filter=filter)
 
     command = ["sh", "-l", "-i", "-c", shlex.join(args)]
-    projects = multigit.filtered_projects(filter)
     for project in projects:
         rich_print(f"[cyan]{project.path}[/cyan]")
         subprocess.check_call(command, cwd=project.path)
@@ -438,9 +462,13 @@ def project_edit(
     ),
 ):
     """Open selected repositories in the configured editor."""
-    multigit = Multigit(config_path=config)
-
-    projects = multigit.filtered_projects(filter)
+    multigit, _, projects = magic("edit", config=config, filter=filter)
+    if len(projects) > 1:
+        confirm = typer.confirm(
+            f"Are you sure you want to edit {len(projects)} projects?"
+        )
+        if not confirm:
+            return
     for project in projects:
         multigit.edit(project.path)
 
@@ -455,9 +483,7 @@ def list_projects(
     ),
 ):
     """List selected repositories."""
-    multigit = Multigit(config_path=config)
-
-    projects = multigit.filtered_projects(filter)
+    multigit, _, projects = magic("list", config=config, filter=filter)
     for project in projects:
         print(project.path)
 
@@ -472,7 +498,7 @@ def info(
     ),
 ):
     """Show information about selected repositories."""
-    multigit = Multigit(config_path=config)
+    multigit, _, projects = magic("info", config=config, filter=filter)
 
     table = Table()
     table.add_column("Path")
@@ -482,7 +508,6 @@ def info(
     table.add_column("Stashes")
     table.add_column("Notes")
 
-    projects = multigit.filtered_projects(filter)
     for project in projects:
         branches = [
             b.name for b in project.repo.branches if b != project.repo.active_branch
