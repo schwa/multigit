@@ -12,7 +12,7 @@ toml = "^0.10.2"
 gitpython = "^3.1.29"
 
 [tool.poetry.scripts]
-multigit = "multigit.main:app"
+mmgit = "multigit.main:app"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.12.0"

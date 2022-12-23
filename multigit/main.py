@@ -93,6 +93,7 @@ class Multigit:
     def edit(self, path):
         editor = self.config.get("editor", os.environ.get("EDITOR", "nano"))
         command = f"{editor} {quote(path)}"
+        print(command)
         command = shlex.split(command)
         subprocess.check_call(command)
 
@@ -153,31 +154,25 @@ def unregister(path: Path = typer.Argument(..., exists=True)):
 
 
 @app.command()
-def config():
-    print(multigit.config_path)
-
-
-@app.command()
-def config_edit():
-    """Edit the multigit config file."""
-    multigit.edit(multigit.config_path)
-
-
-@app.command()
-def self_check(
-    limit: List[str] = typer.Option(None, "--limit", "-l"),
+def config(
+    path: bool = typer.Option(False, "--path", "-p", help="Print config file path"),
+    show: bool = typer.Option(False, "--show", "-s", help="Print config file"),
+    edit: bool = typer.Option(False, "--edit", "-e", help="Edit config file"),
+    clean: bool = typer.Option(False, "--clean", "-c", help="Clean config file"),
 ):
-    """Check that all registered repositories exist."""
-    for project in multigit.all_projects:
-        if limit and not any(project.path.match(l) for l in limit):
-            #            print("Skipping", path, "because it doesn't match any of", limit)
-            continue
-        if limit:
-            rich_print(f"[cyan]{project.path}[/cyan]")
-        if not project.path.exists():
-            rich_print(f"Directory '{project.path}' missing, removing from config")
-            del multigit.config["repositories"][str(project.path)]
-    multigit.save()
+    """Show, edit or clean the config file."""
+    if path:
+        print(multigit.config_path)
+    elif show:
+        print(toml.dumps(multigit.config))
+    elif edit:
+        multigit.edit(multigit.config_path)
+    elif clean:
+        for project in multigit.all_projects:
+            if not project.path.exists():
+                rich_print(f"Directory '{project.path}' missing, removing from config")
+                del multigit.config["repositories"][str(project.path)]
+        multigit.save()
 
 
 # git commands
@@ -186,15 +181,23 @@ def self_check(
 @app.command()
 def status(
     short: bool = typer.Option(False, "--short", "-s"),
-    skip_clean: bool = typer.Option(False, "--skip-clean", "-k"),
     limit: List[str] = typer.Option(None, "--limit", "-l"),
+    dirty: Optional[bool] = typer.Option(None, "--dirty/--no-dirty"),
+    stashes: Optional[bool] = typer.Option(None, "--stash/--no-stash"),
+    untracked: Optional[bool] = typer.Option(None, "--untracked/--no-untracked"),
+    active_branch_name: Optional[str] = typer.Option(None, "--active-branch", "-b"),
+    not_active_branch_name: Optional[str] = typer.Option(None, "--not-active-branch"),
 ):
     """Show the git status of all repositories."""
-    for project in multigit.all_projects:
-        if limit and not any(project.path.match(l) for l in limit):
-            #            print("Skipping", path, "because it doesn't match any of", limit)
-            continue
-
+    projects = multigit.filtered_projects(
+        limit=limit,
+        dirty=dirty,
+        stashes=stashes,
+        untracked=untracked,
+        active_branch_name=active_branch_name,
+        not_active_branch_name=not_active_branch_name,
+    )
+    for project in projects:
         dirty = project.repo.is_dirty()
         untracked_files = len(project.repo.untracked_files) > 0
         if not (dirty and untracked_files) and skip_clean:
@@ -209,11 +212,25 @@ def status(
 
 
 @app.command()
-def add(all: bool = typer.Option(False, "--all", "-a")):
+def add(
+    all: bool = typer.Option(False, "--all", "-a"),
+    limit: List[str] = typer.Option(None, "--limit", "-l"),
+    dirty: Optional[bool] = typer.Option(None, "--dirty/--no-dirty"),
+    stashes: Optional[bool] = typer.Option(None, "--stash/--no-stash"),
+    untracked: Optional[bool] = typer.Option(None, "--untracked/--no-untracked"),
+    active_branch_name: Optional[str] = typer.Option(None, "--active-branch", "-b"),
+    not_active_branch_name: Optional[str] = typer.Option(None, "--not-active-branch"),
+):
     """Add changes in repositories."""
-    for project in multigit.all_projects:
-        if project.repo.is_dirty() or project.repo.untracked_files:
-            continue
+    projects = multigit.filtered_projects(
+        limit=limit,
+        dirty=dirty,
+        stashes=stashes,
+        untracked=untracked,
+        active_branch_name=active_branch_name,
+        not_active_branch_name=not_active_branch_name,
+    )
+    for project in projects:
         command = ["git", "add"]
         if all:
             command.append("--all")
@@ -221,12 +238,26 @@ def add(all: bool = typer.Option(False, "--all", "-a")):
 
 
 @app.command()
-def commit(all: bool = typer.Option(False, "--all", "-a")):
+def commit(
+    all: bool = typer.Option(False, "--all", "-a"),
+    limit: List[str] = typer.Option(None, "--limit", "-l"),
+    dirty: Optional[bool] = typer.Option(None, "--dirty/--no-dirty"),
+    stashes: Optional[bool] = typer.Option(None, "--stash/--no-stash"),
+    untracked: Optional[bool] = typer.Option(None, "--untracked/--no-untracked"),
+    active_branch_name: Optional[str] = typer.Option(None, "--active-branch", "-b"),
+    not_active_branch_name: Optional[str] = typer.Option(None, "--not-active-branch"),
+):
     """Commit changes in repositories."""
-    for project in multigit.all_projects:
+    projects = multigit.filtered_projects(
+        limit=limit,
+        dirty=dirty,
+        stashes=stashes,
+        untracked=untracked,
+        active_branch_name=active_branch_name,
+        not_active_branch_name=not_active_branch_name,
+    )
+    for project in projects:
         print(project.repo.has_unstaged_changes())
-        if project.repo.is_dirty() or project.repo.untracked_files:
-            continue
         command = ["git", "commit"]
         if all:
             command.append("--all")
@@ -234,9 +265,24 @@ def commit(all: bool = typer.Option(False, "--all", "-a")):
 
 
 @app.command()
-def pull():
+def pull(
+    limit: List[str] = typer.Option(None, "--limit", "-l"),
+    dirty: Optional[bool] = typer.Option(None, "--dirty/--no-dirty"),
+    stashes: Optional[bool] = typer.Option(None, "--stash/--no-stash"),
+    untracked: Optional[bool] = typer.Option(None, "--untracked/--no-untracked"),
+    active_branch_name: Optional[str] = typer.Option(None, "--active-branch", "-b"),
+    not_active_branch_name: Optional[str] = typer.Option(None, "--not-active-branch"),
+):
     """Pull changes in repositories.""" ""
-    for project in multigit.all_projects:
+    projects = multigit.filtered_projects(
+        limit=limit,
+        dirty=dirty,
+        stashes=stashes,
+        untracked=untracked,
+        active_branch_name=active_branch_name,
+        not_active_branch_name=not_active_branch_name,
+    )
+    for project in projects:
         repo = project.repo
         if repo.remotes:
             rich_print(f"[cyan]{project.path}[/cyan]")
@@ -244,9 +290,24 @@ def pull():
 
 
 @app.command()
-def push():
+def push(
+    limit: List[str] = typer.Option(None, "--limit", "-l"),
+    dirty: Optional[bool] = typer.Option(None, "--dirty/--no-dirty"),
+    stashes: Optional[bool] = typer.Option(None, "--stash/--no-stash"),
+    untracked: Optional[bool] = typer.Option(None, "--untracked/--no-untracked"),
+    active_branch_name: Optional[str] = typer.Option(None, "--active-branch", "-b"),
+    not_active_branch_name: Optional[str] = typer.Option(None, "--not-active-branch"),
+):
     """Push changes in repositories."""
-    for project in multigit.all_projects:
+    projects = multigit.filtered_projects(
+        limit=limit,
+        dirty=dirty,
+        stashes=stashes,
+        untracked=untracked,
+        active_branch_name=active_branch_name,
+        not_active_branch_name=not_active_branch_name,
+    )
+    for project in projects:
         if project.no_push:
             continue
         repo = project.repo
@@ -259,9 +320,24 @@ def push():
 
 
 @app.command()
-def gc():
+def gc(
+    limit: List[str] = typer.Option(None, "--limit", "-l"),
+    dirty: Optional[bool] = typer.Option(None, "--dirty/--no-dirty"),
+    stashes: Optional[bool] = typer.Option(None, "--stash/--no-stash"),
+    untracked: Optional[bool] = typer.Option(None, "--untracked/--no-untracked"),
+    active_branch_name: Optional[str] = typer.Option(None, "--active-branch", "-b"),
+    not_active_branch_name: Optional[str] = typer.Option(None, "--not-active-branch"),
+):
     """Run git gc in repositories."""
-    for project in multigit.all_projects:
+    projects = multigit.filtered_projects(
+        limit=limit,
+        dirty=dirty,
+        stashes=stashes,
+        untracked=untracked,
+        active_branch_name=active_branch_name,
+        not_active_branch_name=not_active_branch_name,
+    )
+    for project in projects:
         rich_print(f"[cyan]{project.path}[/cyan]")
         subprocess.check_call(["git", "gc"], cwd=project.path)
 
@@ -293,9 +369,24 @@ def ui(
 
 
 @app.command()
-def reveal(dirty_only: bool = typer.Option(False, "--dirty", "-d")):
+def reveal(
+    limit: List[str] = typer.Option(None, "--limit", "-l"),
+    dirty: Optional[bool] = typer.Option(None, "--dirty/--no-dirty"),
+    stashes: Optional[bool] = typer.Option(None, "--stash/--no-stash"),
+    untracked: Optional[bool] = typer.Option(None, "--untracked/--no-untracked"),
+    active_branch_name: Optional[str] = typer.Option(None, "--active-branch", "-b"),
+    not_active_branch_name: Optional[str] = typer.Option(None, "--not-active-branch"),
+):
     """Reveal selected repositories in the Finder."""
-    for project in multigit.all_projects:
+    projects = multigit.filtered_projects(
+        limit=limit,
+        dirty=dirty,
+        stashes=stashes,
+        untracked=untracked,
+        active_branch_name=active_branch_name,
+        not_active_branch_name=not_active_branch_name,
+    )
+    for project in projects:
         repo = project.repo
         dirty = repo.is_dirty()
         if dirty_only and not dirty:
@@ -304,7 +395,15 @@ def reveal(dirty_only: bool = typer.Option(False, "--dirty", "-d")):
 
 
 @app.command(name="exec")
-def shell_exec(args: List[str]):
+def shell_exec(
+    args: List[str],
+    limit: List[str] = typer.Option(None, "--limit", "-l"),
+    dirty: Optional[bool] = typer.Option(None, "--dirty/--no-dirty"),
+    stashes: Optional[bool] = typer.Option(None, "--stash/--no-stash"),
+    untracked: Optional[bool] = typer.Option(None, "--untracked/--no-untracked"),
+    active_branch_name: Optional[str] = typer.Option(None, "--active-branch", "-b"),
+    not_active_branch_name: Optional[str] = typer.Option(None, "--not-active-branch"),
+):
     """Execute a shell command in selected repositories."""
     command = ["sh", "-l", "-i", "-c", shlex.join(args)]
     for project in multigit.all_projects:
