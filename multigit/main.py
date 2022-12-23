@@ -23,15 +23,19 @@ def quote(obj):
 
 
 class Multigit:
-    def __init__(self):
-        self.config_path = Path.home() / ".config/multigit/config.toml"
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        if self.config_path.exists():
+    def __init__(self, config_path: Path = None):
+        if config_path := config_path:
+            self.config_path = config_path
+        else:
+            config_home = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config"))
+            self.config_path = config_home / "multigit/config.toml"
+        if not self.config_path.exists():
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            self.config = {"repositories": {}}
+        else:
             self.config = toml.load(self.config_path)
             if "repositories" not in self.config:
                 self.config["repositories"] = {}
-        else:
-            self.config = {"repositories": {}}
 
     def save(self):
         toml.dump(self.config, self.config_path.open("w"))
