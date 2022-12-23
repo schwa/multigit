@@ -6,8 +6,19 @@ Loosely inspired by frustrations caused by trying to use [myrepos](https://myrep
 
 ## Installation
 
-The easiest way to install this is with pipx:
+The easiest way to install this is with pipx (`brew install pipx`):
 
 ```sh
 pipx install git+https://github.com/schwa/multigit.git
+```
+
+## Basic Usage
+
+```sh
+multigit --help
+multigit register <path to repository>
+multigit register <path to another repository>
+multigit status
+multigit pull
+multigit push
 ```
