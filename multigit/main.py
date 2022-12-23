@@ -310,8 +310,15 @@ def commit(
         "commit", "git commit", config=config, filter=filter, extra_args=extra_args
     )
     for project in projects:
-        print(project.repo.has_unstaged_changes())
-        subprocess.check_call(command, cwd=project.path)
+        try:
+            subprocess.check_call(command, cwd=project.path)
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 1:
+                rich_print(
+                    f"[cyan]{project.path}[/cyan]: [bold yellow]nothing to commit[/bold yellow]"
+                )
+            else:
+                raise
 
 
 @app.command()
