@@ -407,6 +407,7 @@ def ui(
 ):
     """Open the configured git ui program for selected repositories."""
     multigit, _, projects = magic("ui", config=config, filter=filter)
+    projects = list(projects)
     if len(projects) > 1:
         confirm = typer.confirm(
             f"Are you sure you want to open {len(projects)} projects?"
