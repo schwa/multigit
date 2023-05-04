@@ -471,6 +471,7 @@ def project_edit(
 ):
     """Open selected repositories in the configured editor."""
     multigit, _, projects = magic("edit", config=config, filter=filter)
+    projects = list(projects)
     if len(projects) > 1:
         confirm = typer.confirm(
             f"Are you sure you want to edit {len(projects)} projects?"
