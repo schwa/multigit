@@ -9,7 +9,7 @@ readme = "README.md"
 python = "^3.10"
 typer = {extras = ["all"], version = "^0.7.0"}
 toml = "^0.10.2"
-gitpython = "^3.1.37"
+gitpython = "^3.1.41"
 
 [tool.poetry.scripts]
 mmgit = "multigit.main:app"
